@@ -60,7 +60,28 @@ def transcribe(
     try:
         model = WhisperModel(model_size, device=device, compute_type="int8")
     except Exception as e:
-        raise TranscriptionError(f"Failed to load model '{model_size}': {e}") from e
+        # Check if this is a CUDA-related error and we're not already on CPU
+        error_msg = str(e).lower()
+        is_cuda_error = any(
+            keyword in error_msg
+            for keyword in ["libcublas", "libcudart", "cuda", "cudnn", "libcurand", "libcusparse"]
+        )
+        if is_cuda_error and device != "cpu":
+            logger.warning(
+                "CUDA error detected (%s). Falling back to CPU. "
+                "Install CUDA toolkit for GPU acceleration.",
+                e,
+            )
+            device = "cpu"
+            logger.info("Retrying with device=%s", device)
+            try:
+                model = WhisperModel(model_size, device=device, compute_type="int8")
+            except Exception as e2:
+                raise TranscriptionError(
+                    f"Failed to load model '{model_size}' on CPU: {e2}"
+                ) from e2
+        else:
+            raise TranscriptionError(f"Failed to load model '{model_size}': {e}") from e
 
     logger.info("Transcribing: %s", audio_path)
 
