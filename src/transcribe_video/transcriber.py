@@ -10,6 +10,15 @@ from faster_whisper import WhisperModel  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
+_CUDA_ERROR_KEYWORDS = [
+    "libcublas",
+    "libcudart",
+    "cuda",
+    "cudnn",
+    "libcurand",
+    "libcusparse",
+]
+
 
 class TranscriptionError(Exception):
     """Raised when transcription fails."""
@@ -55,45 +64,53 @@ def transcribe(
     if device is None:
         device = "auto"
 
-    logger.info("Loading whisper model: %s (device=%s)", model_size, device)
+    # Try with requested device, fall back to CPU on CUDA errors
+    devices_to_try = [device, "cpu"] if device != "cpu" else ["cpu"]
 
-    try:
-        model = WhisperModel(model_size, device=device, compute_type="int8")
-    except Exception as e:
-        # Check if this is a CUDA-related error and we're not already on CPU
-        error_msg = str(e).lower()
-        is_cuda_error = any(
-            keyword in error_msg
-            for keyword in ["libcublas", "libcudart", "cuda", "cudnn", "libcurand", "libcusparse"]
-        )
-        if is_cuda_error and device != "cpu":
-            logger.warning(
-                "CUDA error detected (%s). Falling back to CPU. "
-                "Install CUDA toolkit for GPU acceleration.",
-                e,
-            )
-            device = "cpu"
-            logger.info("Retrying with device=%s", device)
-            try:
-                model = WhisperModel(model_size, device=device, compute_type="int8")
-            except Exception as e2:
-                raise TranscriptionError(
-                    f"Failed to load model '{model_size}' on CPU: {e2}"
-                ) from e2
-        else:
+    model = None
+    info = None
+    segments = None
+
+    for attempt_device in devices_to_try:
+        logger.info("Loading whisper model: %s (device=%s)", model_size, attempt_device)
+
+        try:
+            model = WhisperModel(model_size, device=attempt_device, compute_type="int8")
+        except Exception as e:
+            error_msg = str(e).lower()
+            is_cuda_error = any(keyword in error_msg for keyword in _CUDA_ERROR_KEYWORDS)
+            if is_cuda_error and attempt_device != "cpu":
+                logger.warning(
+                    "CUDA error detected (%s). Falling back to CPU. "
+                    "Install CUDA toolkit for GPU acceleration.",
+                    e,
+                )
+                continue
             raise TranscriptionError(f"Failed to load model '{model_size}': {e}") from e
 
-    logger.info("Transcribing: %s", audio_path)
+        logger.info("Transcribing: %s", audio_path)
 
-    try:
-        segments, info = model.transcribe(
-            str(audio_path),
-            language=language,
-            beam_size=5,
-            vad_filter=True,
-        )
-    except Exception as e:
-        raise TranscriptionError(f"Transcription failed: {e}") from e
+        try:
+            segments, info = model.transcribe(
+                str(audio_path),
+                language=language,
+                beam_size=5,
+                vad_filter=True,
+            )
+            break  # Success!
+        except Exception as e:
+            error_msg = str(e).lower()
+            is_cuda_error = any(keyword in error_msg for keyword in _CUDA_ERROR_KEYWORDS)
+            if is_cuda_error and attempt_device != "cpu":
+                logger.warning(
+                    "CUDA error during transcription (%s). Falling back to CPU.",
+                    e,
+                )
+                continue
+            raise TranscriptionError(f"Transcription failed: {e}") from e
+
+    if model is None or segments is None or info is None:
+        raise TranscriptionError("Transcription failed: could not process audio")
 
     logger.info(
         "Detected language: %s (probability: %.2f)",
