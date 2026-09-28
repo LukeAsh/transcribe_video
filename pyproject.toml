@@ -7,10 +7,13 @@ authors = [
     { name = "lukas", email = "lukas@zbook" },
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "faster-whisper>=1.2.1",
+    "yt-dlp>=2026.8.19",
+]
 
 [project.scripts]
-transcribe-video = "transcribe_video:main"
+transcribe-video = "transcribe_video.cli:main"
 
 [build-system]
 requires = ["hatchling"]
