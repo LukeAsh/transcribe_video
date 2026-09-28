@@ -50,6 +50,9 @@ def download_audio(
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
+        # Sanitize filenames to handle special characters
+        "restrictfilenames": False,
+        "windowsfilenames": True,
     }
 
     logger.info("Downloading audio from: %s", url)
@@ -60,15 +63,17 @@ def download_audio(
             if info is None:
                 raise DownloadError(f"Could not extract info from: {url}")
 
-            title = info.get("title", "unknown")
-            filename = f"{title}.{audio_format}"
-            filepath = output_dir / filename
+            # Use yt-dlp's prepare_filename to get the actual saved filename
+            # This handles all special character sanitization correctly
+            actual_filename = ydl.prepare_filename(info)
+            # Replace the extension with our audio format
+            actual_path = Path(actual_filename).with_suffix(f".{audio_format}")
 
-            if not filepath.exists():
-                raise DownloadError(f"Download completed but file not found: {filepath}")
+            if not actual_path.exists():
+                raise DownloadError(f"Download completed but file not found: {actual_path}")
 
-            logger.info("Downloaded: %s", filepath)
-            return filepath
+            logger.info("Downloaded: %s", actual_path)
+            return actual_path
 
     except yt_dlp.utils.DownloadError as e:
         raise DownloadError(f"Failed to download {url}: {e}") from e

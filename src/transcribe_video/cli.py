@@ -4,11 +4,49 @@ from __future__ import annotations
 
 import argparse
 import logging
+import logging.config
 import sys
 from pathlib import Path
 
 from transcribe_video.downloader import DownloadError, download_audio
 from transcribe_video.transcriber import TranscriptionError, transcribe
+
+LOG_FILE = Path("transcribe_video.log")
+
+LOGGING_CONFIG: dict[str, object] = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            "datefmt": "%H:%M:%S",
+        },
+        "detailed": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "standard",
+            "stream": "ext://sys.stderr",
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "level": "DEBUG",
+            "formatter": "detailed",
+            "filename": str(LOG_FILE),
+            "mode": "a",
+            "encoding": "utf-8",
+        },
+    },
+    "root": {
+        "level": "DEBUG",
+        "handlers": ["console", "file"],
+    },
+}
 
 
 def main() -> None:
@@ -56,13 +94,14 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Configure logging
-    log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-    )
+    # Configure logging with dictConfig
+    logging.config.dictConfig(LOGGING_CONFIG)
+
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    logger = logging.getLogger(__name__)
+    logger.info("Logging to file: %s", LOG_FILE)
 
     output_formats = args.output_formats or ["txt"]
     output_dir = Path(args.output_dir) if args.output_dir else Path(".")
@@ -71,7 +110,7 @@ def main() -> None:
     try:
         audio_path = download_audio(args.url, output_dir=output_dir)
     except DownloadError as e:
-        logging.error("Download failed: %s", e)
+        logger.error("Download failed: %s", e)
         sys.exit(1)
 
     # Step 2: Transcribe
@@ -85,7 +124,7 @@ def main() -> None:
             device=args.device,
         )
     except TranscriptionError as e:
-        logging.error("Transcription failed: %s", e)
+        logger.error("Transcription failed: %s", e)
         sys.exit(1)
 
     # Summary
