@@ -11,12 +11,13 @@ from faster_whisper import WhisperModel  # type: ignore[import-untyped]
 logger = logging.getLogger(__name__)
 
 _CUDA_ERROR_KEYWORDS = [
-    "libcublas",
-    "libcudart",
-    "cuda",
+    "cublas",
     "cudnn",
-    "libcurand",
-    "libcusparse",
+    "cudart",
+    "curand",
+    "cusparse",
+    "cufft",
+    "cuda",
 ]
 
 
@@ -70,6 +71,7 @@ def transcribe(
     model = None
     info = None
     segments = None
+    segment_list = None
 
     for attempt_device in devices_to_try:
         logger.info("Loading whisper model: %s (device=%s)", model_size, attempt_device)
@@ -97,6 +99,7 @@ def transcribe(
                 beam_size=5,
                 vad_filter=True,
             )
+            segment_list = list(segments)
             break  # Success!
         except Exception as e:
             error_msg = str(e).lower()
@@ -109,7 +112,7 @@ def transcribe(
                 continue
             raise TranscriptionError(f"Transcription failed: {e}") from e
 
-    if model is None or segments is None or info is None:
+    if model is None or segment_list is None or info is None:
         raise TranscriptionError("Transcription failed: could not process audio")
 
     logger.info(
@@ -117,9 +120,6 @@ def transcribe(
         info.language,
         info.language_probability,
     )
-
-    # Collect all segments
-    segment_list = list(segments)
 
     results: dict[str, Path] = {}
     base_name = audio_path.stem
