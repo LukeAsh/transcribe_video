@@ -18,6 +18,11 @@ def download_audio(
     url: str,
     output_dir: str | Path = ".",
     audio_format: str = "mp3",
+    cookies: str | None = None,
+    cookies_from_browser: str | None = None,
+    player_client: str | None = None,
+    js_runtimes: str | None = None,
+    remote_components: str | None = None,
 ) -> Path:
     """Download the audio track from a video URL.
 
@@ -25,6 +30,14 @@ def download_audio(
         url: The video URL (YouTube, etc.).
         output_dir: Directory to save the audio file.
         audio_format: Audio format to extract (mp3, wav, etc.).
+        cookies: Path to a Netscape cookies file (e.g. cookies.txt) for
+            authenticated downloads.
+        cookies_from_browser: Browser to load cookies from (e.g. chrome, firefox,
+            edge) for authenticated downloads.
+        player_client: YouTube player client(s), e.g. "default,web_embedded".
+        js_runtimes: JavaScript runtime for challenge solving, e.g. "deno",
+            "node", or "deno:/path/to/deno".
+        remote_components: Remote components to allow, e.g. "ejs:github".
 
     Returns:
         Path to the downloaded audio file.
@@ -54,6 +67,13 @@ def download_audio(
         "restrictfilenames": False,
         "windowsfilenames": True,
     }
+
+    if cookies:
+        ydl_opts["cookiefile"] = cookies
+    if cookies_from_browser:
+        # yt-dlp expects a tuple (browser, profile, keyring, container);
+        # a plain string would be unpacked character by character.
+        ydl_opts["cookiesfrombrowser"] = tuple(cookies_from_browser.split(":"))
 
     logger.info("Downloading audio from: %s", url)
 

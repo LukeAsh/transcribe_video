@@ -86,6 +86,31 @@ def main() -> None:
         help="Compute device. Auto-detected if not specified.",
     )
     parser.add_argument(
+        "--cookies",
+        default=None,
+        help="Path to a Netscape cookies file (e.g. cookies.txt) for authenticated downloads",
+    )
+    parser.add_argument(
+        "--cookies-from-browser",
+        default=None,
+        choices=[
+            "brave",
+            "chrome",
+            "chromium",
+            "edge",
+            "firefox",
+            "opera",
+            "safari",
+            "vivaldi",
+            "whale",
+        ],
+        help=(
+            "Load cookies from a browser for authenticated downloads. "
+            "Optionally append :profile, :keyring or :container "
+            "(e.g. firefox, chrome:default, vivaldi:default:BASICTEXT)"
+        ),
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -108,7 +133,12 @@ def main() -> None:
 
     # Step 1: Download audio
     try:
-        audio_path = download_audio(args.url, output_dir=output_dir)
+        audio_path = download_audio(
+            args.url,
+            output_dir=output_dir,
+            cookies=args.cookies,
+            cookies_from_browser=args.cookies_from_browser,
+        )
     except DownloadError as e:
         logger.error("Download failed: %s", e)
         sys.exit(1)
