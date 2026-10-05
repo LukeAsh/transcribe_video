@@ -111,6 +111,34 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--player-client",
+        default=None,
+        help=(
+            "YouTube player client(s) to use, e.g. default,web_embedded or web_safari. "
+            "Useful when downloads fail with 'The page needs to be reloaded'"
+        ),
+    )
+    parser.add_argument(
+        "--js-runtimes",
+        action="append",
+        default=None,
+        metavar="RUNTIME[:PATH]",
+        help=(
+            "JavaScript runtime for YouTube challenge solving, e.g. deno or "
+            "node:/path/to/node. Can be specified multiple times."
+        ),
+    )
+    parser.add_argument(
+        "--remote-components",
+        action="append",
+        default=None,
+        metavar="COMPONENT",
+        help=(
+            "Remote components to allow, e.g. ejs:github or ejs:npm. "
+            "Can be specified multiple times."
+        ),
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -138,6 +166,9 @@ def main() -> None:
             output_dir=output_dir,
             cookies=args.cookies,
             cookies_from_browser=args.cookies_from_browser,
+            player_client=args.player_client,
+            js_runtimes=args.js_runtimes,
+            remote_components=args.remote_components,
         )
     except DownloadError as e:
         logger.error("Download failed: %s", e)

@@ -21,8 +21,8 @@ def download_audio(
     cookies: str | None = None,
     cookies_from_browser: str | None = None,
     player_client: str | None = None,
-    js_runtimes: str | None = None,
-    remote_components: str | None = None,
+    js_runtimes: list[str] | None = None,
+    remote_components: list[str] | None = None,
 ) -> Path:
     """Download the audio track from a video URL.
 
@@ -35,9 +35,9 @@ def download_audio(
         cookies_from_browser: Browser to load cookies from (e.g. chrome, firefox,
             edge) for authenticated downloads.
         player_client: YouTube player client(s), e.g. "default,web_embedded".
-        js_runtimes: JavaScript runtime for challenge solving, e.g. "deno",
-            "node", or "deno:/path/to/deno".
-        remote_components: Remote components to allow, e.g. "ejs:github".
+        js_runtimes: JavaScript runtimes for challenge solving, e.g. ["deno"]
+            or ["node:/path/to/node"].
+        remote_components: Remote components to allow, e.g. ["ejs:github"].
 
     Returns:
         Path to the downloaded audio file.
@@ -74,6 +74,20 @@ def download_audio(
         # yt-dlp expects a tuple (browser, profile, keyring, container);
         # a plain string would be unpacked character by character.
         ydl_opts["cookiesfrombrowser"] = tuple(cookies_from_browser.split(":"))
+    if player_client:
+        # extractor_args values must be lists of strings, not a single string.
+        ydl_opts["extractor_args"] = {
+            "youtube": {"player_client": [c for c in player_client.split(",") if c]}
+        }
+    if js_runtimes:
+        # yt-dlp expects {runtime: {"path": path | None}}.
+        runtimes: dict[str, dict[str, str | None]] = {}
+        for arg in js_runtimes:
+            runtime, _, path = arg.partition(":")
+            runtimes[runtime.lower()] = {"path": path or None}
+        ydl_opts["js_runtimes"] = runtimes
+    if remote_components:
+        ydl_opts["remote_components"] = remote_components
 
     logger.info("Downloading audio from: %s", url)
 
