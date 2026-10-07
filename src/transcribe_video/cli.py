@@ -55,7 +55,10 @@ def main() -> None:
         prog="transcribe-video",
         description="Download video audio and transcribe it using Whisper.",
     )
-    parser.add_argument("url", help="Video URL to download and transcribe")
+    parser.add_argument(
+        "source",
+        help="Video URL to download and transcribe, or path to a local audio file",
+    )
     parser.add_argument(
         "--model",
         default="base",
@@ -157,22 +160,26 @@ def main() -> None:
     logger.info("Logging to file: %s", LOG_FILE)
 
     output_formats = args.output_formats or ["txt"]
-    output_dir = Path(args.output_dir) if args.output_dir else Path(".")
-
-    # Step 1: Download audio
-    try:
-        audio_path = download_audio(
-            args.url,
-            output_dir=output_dir,
-            cookies=args.cookies,
-            cookies_from_browser=args.cookies_from_browser,
-            player_client=args.player_client,
-            js_runtimes=args.js_runtimes,
-            remote_components=args.remote_components,
-        )
-    except DownloadError as e:
-        logger.error("Download failed: %s", e)
-        sys.exit(1)
+    source = Path(args.source)
+    if source.is_file():
+        audio_path = source
+        output_dir = Path(args.output_dir) if args.output_dir else source.parent
+    else:
+        output_dir = Path(args.output_dir) if args.output_dir else Path(".")
+        # Step 1: Download audio
+        try:
+            audio_path = download_audio(
+                args.source,
+                output_dir=output_dir,
+                cookies=args.cookies,
+                cookies_from_browser=args.cookies_from_browser,
+                player_client=args.player_client,
+                js_runtimes=args.js_runtimes,
+                remote_components=args.remote_components,
+            )
+        except DownloadError as e:
+            logger.error("Download failed: %s", e)
+            sys.exit(1)
 
     # Step 2: Transcribe
     try:
