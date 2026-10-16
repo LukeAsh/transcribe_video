@@ -14,9 +14,10 @@ class DownloadError(Exception):
     """Raised when a download fails."""
 
 
-def download_audio(
+def download_media(
     url: str,
     output_dir: str | Path = ".",
+    audio_only: bool = False,
     audio_format: str = "mp3",
     cookies: str | None = None,
     cookies_from_browser: str | None = None,
@@ -24,12 +25,15 @@ def download_audio(
     js_runtimes: list[str] | None = None,
     remote_components: list[str] | None = None,
 ) -> Path:
-    """Download the audio track from a video URL.
+    """Download a video, or just its audio track, from a URL.
 
     Args:
         url: The video URL (YouTube, etc.).
-        output_dir: Directory to save the audio file.
-        audio_format: Audio format to extract (mp3, wav, etc.).
+        output_dir: Directory to save the downloaded file.
+        audio_only: If True, download only the audio track. If False,
+            download the best video with audio.
+        audio_format: Audio format to extract when audio_only is True
+            (mp3, wav, etc.).
         cookies: Path to a Netscape cookies file (e.g. cookies.txt) for
             authenticated downloads.
         cookies_from_browser: Browser to load cookies from (e.g. chrome, firefox,
@@ -40,7 +44,7 @@ def download_audio(
         remote_components: Remote components to allow, e.g. ["ejs:github"].
 
     Returns:
-        Path to the downloaded audio file.
+        Path to the downloaded file.
 
     Raises:
         DownloadError: If the download fails.
@@ -51,15 +55,7 @@ def download_audio(
     template = str(output_dir / "%(title)s.%(ext)s")
 
     ydl_opts: dict[str, object] = {
-        "format": "bestaudio/best",
         "outtmpl": template,
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": audio_format,
-                "preferredquality": "192",
-            }
-        ],
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
@@ -67,6 +63,19 @@ def download_audio(
         "restrictfilenames": False,
         "windowsfilenames": True,
     }
+
+    if audio_only:
+        ydl_opts["format"] = "bestaudio/best"
+        ydl_opts["postprocessors"] = [
+            {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": audio_format,
+                "preferredquality": "192",
+            }
+        ]
+    else:
+        ydl_opts["format"] = "bestvideo+bestaudio/best"
+        ydl_opts["merge_output_format"] = "mp4"
 
     if cookies:
         ydl_opts["cookiefile"] = cookies
@@ -89,7 +98,7 @@ def download_audio(
     if remote_components:
         ydl_opts["remote_components"] = remote_components
 
-    logger.info("Downloading audio from: %s", url)
+    logger.info("Downloading %s from: %s", "audio" if audio_only else "video", url)
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -100,8 +109,11 @@ def download_audio(
             # Use yt-dlp's prepare_filename to get the actual saved filename
             # This handles all special character sanitization correctly
             actual_filename = ydl.prepare_filename(info)
-            # Replace the extension with our audio format
-            actual_path = Path(actual_filename).with_suffix(f".{audio_format}")
+            if audio_only:
+                # Replace the extension with our audio format
+                actual_path = Path(actual_filename).with_suffix(f".{audio_format}")
+            else:
+                actual_path = Path(actual_filename)
 
             if not actual_path.exists():
                 raise DownloadError(f"Download completed but file not found: {actual_path}")

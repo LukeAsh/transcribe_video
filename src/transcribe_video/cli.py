@@ -8,7 +8,7 @@ import logging.config
 import sys
 from pathlib import Path
 
-from transcribe_video.downloader import DownloadError, download_audio
+from transcribe_video.downloader import DownloadError, download_media
 from transcribe_video.transcriber import TranscriptionError, transcribe
 
 LOG_FILE = Path("transcribe_video.log")
@@ -53,7 +53,7 @@ def main() -> None:
     """Entry point for the transcribe-video CLI."""
     parser = argparse.ArgumentParser(
         prog="transcribe-video",
-        description="Download video audio and transcribe it using Whisper.",
+        description="Download a video (or its audio) and transcribe it using Whisper.",
     )
     parser.add_argument(
         "source",
@@ -76,6 +76,11 @@ def main() -> None:
         dest="output_formats",
         choices=["txt", "srt", "vtt"],
         help="Output format(s). Can be specified multiple times. Default: txt",
+    )
+    parser.add_argument(
+        "--audio-only",
+        action="store_true",
+        help="Download only the audio track instead of the full video.",
     )
     parser.add_argument(
         "--output-dir",
@@ -162,15 +167,16 @@ def main() -> None:
     output_formats = args.output_formats or ["txt"]
     source = Path(args.source)
     if source.is_file():
-        audio_path = source
+        media_path = source
         output_dir = Path(args.output_dir) if args.output_dir else source.parent
     else:
         output_dir = Path(args.output_dir) if args.output_dir else Path(".")
-        # Step 1: Download audio
+        # Step 1: Download media
         try:
-            audio_path = download_audio(
+            media_path = download_media(
                 args.source,
                 output_dir=output_dir,
+                audio_only=args.audio_only,
                 cookies=args.cookies,
                 cookies_from_browser=args.cookies_from_browser,
                 player_client=args.player_client,
@@ -184,7 +190,7 @@ def main() -> None:
     # Step 2: Transcribe
     try:
         results = transcribe(
-            audio_path=audio_path,
+            audio_path=media_path,
             model_size=args.model,
             language=args.language,
             output_dir=output_dir,

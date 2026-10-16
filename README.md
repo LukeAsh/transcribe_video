@@ -20,6 +20,9 @@ uv run transcribe-video <URL> --model small --language en
 # Output subtitles too
 uv run transcribe-video <URL> --output-format txt --output-format srt --output-format vtt
 
+# Download audio only instead of the full video
+uv run transcribe-video <URL> --audio-only
+
 # Verbose logging
 uv run transcribe-video <URL> -v
 ```
@@ -31,6 +34,7 @@ uv run transcribe-video <URL> -v
 | `--model` | `base` | Whisper model: `tiny`, `base`, `small`, `medium`, `large-v3` |
 | `--language` | auto | Language code (e.g., `en`, `es`, `fr`) |
 | `--output-format` | `txt` | Output format: `txt`, `srt`, `vtt` (repeatable) |
+| `--audio-only` | off | Download only the audio track instead of the full video |
 | `--output-dir` | `.` | Output directory |
 | `--device` | auto | Compute device: `auto`, `cuda`, `cpu` |
 | `--verbose` / `-v` | off | Enable verbose logging |
