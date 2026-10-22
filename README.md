@@ -1,8 +1,14 @@
 # transcribe-video
 
-Download video audio and transcribe it using Whisper.
+Download video and transcribe it using Whisper.
 
-## Installation
+## Installation on Windows
+
+```
+winget install astral-sh.uv
+winget install Microsoft.VCRedist.2015+.x64
+winget install Gyan.FFmpeg
+```
 
 ```bash
 uv sync
@@ -12,19 +18,19 @@ uv sync
 
 ```bash
 # Basic usage (auto-detect language, output .txt)
-uv run transcribe-video <URL>
+uv run transcribe-video <URL/FILE>
 
 # Specify model and language
-uv run transcribe-video <URL> --model small --language en
+uv run transcribe-video <URL/FILE> --model small --language en
 
 # Output subtitles too
-uv run transcribe-video <URL> --output-format txt --output-format srt --output-format vtt
+uv run transcribe-video <URL/FILE> --output-format txt --output-format srt --output-format vtt
 
-# Download audio only instead of the full video
-uv run transcribe-video <URL> --audio-only
+# Download/extract audio only instead of the full video
+uv run transcribe-video <URL/FILE> --audio-only
 
 # Verbose logging
-uv run transcribe-video <URL> -v
+uv run transcribe-video <URL/FILE> -v
 ```
 
 ### Options

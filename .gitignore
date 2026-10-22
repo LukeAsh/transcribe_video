@@ -8,6 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+*.lock
 
 # Tooling
 .ruff_cache/
@@ -25,3 +26,13 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# subtitles, videos, audio files
+*.txt
+*.srt
+*.mp4
+*.mp3
+
+# Other's that I don't want to see
+*.log
+*.patch
