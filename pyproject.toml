@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "lukas", email = "lukas@zbook" },
 ]
-requires-python = "==3.12"
+requires-python = "==3.12.*"
 dependencies = [
     "faster-whisper==1.2.1",
     "av==18.1.0",
